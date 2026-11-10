@@ -1,53 +1,101 @@
--- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
---
--- Host: 127.0.0.1    Database: comissao
--- ------------------------------------------------------
--- Server version	8.0.45
+create database TCC;
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+use TCC;
 
---
--- Table structure for table `usuarios`
---
+CREATE TABLE turma (
+id_turma INT auto_increment PRIMARY KEY,
+nome_turma VARCHAR (30) NOT NULL,
+ano YEAR NOT NULL
+);
 
-DROP TABLE IF EXISTS `usuarios`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `usuarios` (
-  `email` varchar(255) NOT NULL,
-  `cargo` varchar(20) DEFAULT NULL,
-  `nome` varchar(100) NOT NULL,
-  `sala` varchar(30) NOT NULL,
-  `senha` varchar(255) NOT NULL,
-  PRIMARY KEY (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+CREATE TABLE usuarios (
+id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+nome VARCHAR (100) NOT NULL,
+email VARCHAR(255) UNIQUE NOT NULL,
+senha_hash VARCHAR (255) NOT NULL,
+tipo_usuario ENUM ('aluno', 'comissao','adm') NOT NULL,
+id_turma INT, CONSTRAINT fk_id_turma FOREIGN KEY (id_turma) REFERENCES turma(id_turma),
+ativo BOOLEAN DEFAULT TRUE,
+data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
---
--- Dumping data for table `usuarios`
---
+CREATE TABLE eventos (
+id_evento INT AUTO_INCREMENT PRIMARY KEY,
+nome_evento VARCHAR (100) NOT NULL,
+descricao TEXT,
+data_evento DATE NOT NULL,
+hora_inicio TIME,
+hora_fim TIME,
+local VARCHAR (255),
+status ENUM ('agendado','realizado','cancelado') NOT NULL DEFAULT 'agendado'
+);
 
-LOCK TABLES `usuarios` WRITE;
-/*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-/*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+CREATE TABLE campanhas_produtos(
+id_campanha INT AUTO_INCREMENT PRIMARY KEY,
+nome_campanha VARCHAR (255) NOT NULL,
+descricao TEXT,
+data_inicio DATE NOT NULL,
+data_fim DATE ,
+status ENUM ('planejada','ativa','encerrada','cancelada') NOT NULL DEFAULT 'planejada');
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+CREATE TABLE produtos (
+id_produto INT AUTO_INCREMENT PRIMARY KEY,
+id_campanha INT NOT NULL, CONSTRAINT fk_id_campanha FOREIGN KEY (id_campanha) REFERENCES campanhas_produtos(id_campanha),
+nome_produto VARCHAR (100) NOT NULL,
+descricao TEXT,
+preco_unitario DECIMAL (10,2) NOT NULL,
+ativo BOOLEAN DEFAULT TRUE
+);
 
--- Dump completed on 2026-11-06 14:53:38
+CREATE TABLE rifas(
+id_rifa INT AUTO_INCREMENT PRIMARY KEY,
+id_evento INT NOT NULL, CONSTRAINT fk_id_evento FOREIGN KEY (id_evento) REFERENCES eventos (id_evento),
+valor_numero DECIMAL (10,2) NOT NULL,
+quantidade_total INT NOT NULL,
+data_sorteio DATE,
+status ENUM ('planejada','ativa', 'encerrada','cancelada') default 'planejada'
+);
+
+CREATE TABLE distribuicoes_rifas (
+id_distribuicao_rifa INT AUTO_INCREMENT PRIMARY KEY,
+id_rifa INT NOT NULL, CONSTRAINT fk_id_rifa FOREIGN KEY (id_rifa) REFERENCES rifas (id_rifa),
+id_aluno INT NOT NULL, CONSTRAINT fk_id_aluno FOREIGN KEY (id_aluno) REFERENCES usuarios (id_usuario),
+quantidade_distribuida INT NOT NULL
+);
+
+CREATE TABLE arrecadacoes (
+id_arrecadacao INT AUTO_INCREMENT PRIMARY KEY,
+nome_arrecadacao VARCHAR (100) NOT NULL,
+descricao text,
+data_inicio DATE NOT NULL,
+data_fim DATE,
+status ENUM('planejada', 'ativa','encerrada', 'cancelada') DEFAULT 'planejada'
+);
+
+CREATE TABLE arrecadacoes_turmas (
+    id_arrecadacao_turma INT AUTO_INCREMENT PRIMARY KEY,
+    id_arrecadacao INT NOT NULL,
+    CONSTRAINT fk_id_arrecadacao FOREIGN KEY (id_arrecadacao) REFERENCES arrecadacoes(id_arrecadacao),
+    id_turma INT NOT NULL,
+    CONSTRAINT fk_id_turma_arrecadacao FOREIGN KEY (id_turma) REFERENCES turma(id_turma),
+    quantidade_arrecadada DECIMAL(10,2) NOT NULL DEFAULT 0
+);
+
+CREATE TABLE prestacoes_contas (
+id_prestacao INT AUTO_INCREMENT PRIMARY KEY,
+id_aluno INT NOT NULL, CONSTRAINT ce_id_aluno FOREIGN KEY (id_aluno) REFERENCES usuarios (id_usuario) ,
+id_rifa INT NOT NULL, CONSTRAINT ce_id_rifa FOREIGN KEY (id_rifa) REFERENCES rifas(id_rifa),
+quantidade_vendida INT NOT NULL DEFAULT 0,
+valor_entregue DECIMAL (10,2) NOT NULL,
+data_prestacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+observacao TEXT
+);
+
+CREATE TABLE movimentacoes_financeiras (
+id_movimentacao INT AUTO_INCREMENT PRIMARY KEY,
+tipo ENUM ('entrada', 'saida') NOT NULL,
+descricao TEXT NOT NULL,
+valor DECIMAL (10,2) NOT NULL,
+data_movimentacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+id_prestacao INT UNIQUE, CONSTRAINT fk_id_prestacao FOREIGN KEY (id_prestacao) REFERENCES prestacoes_contas (id_prestacao)
+);
